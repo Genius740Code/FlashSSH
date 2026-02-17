@@ -2,6 +2,8 @@
 
 A sleek, fast SSH connection manager built with **Go** + **Wails** + **React**.
 
+📁 **Repository**: https://github.com/Genius740Code/FlashSSH
+
 Add your SSH hosts, tag and organize them, then connect with a single click — FlashSSH opens a terminal and SSH's in automatically.
 
 ---
@@ -23,6 +25,20 @@ Add your SSH hosts, tag and organize them, then connect with a single click — 
 
 ## 🚀 Getting Started
 
+### Installation
+
+#### Download Pre-built Binaries
+
+Grab the latest release from the [GitHub Releases](https://github.com/Genius740Code/FlashSSH/releases) page for your platform:
+
+- **Windows**: `flashssh-windows.exe`
+- **macOS**: `flashssh-macos` (Intel/Apple Silicon universal)
+- **Linux**: `flashssh-linux`
+
+#### Build from Source
+
+If you prefer to build from source or contribute to development:
+
 ### Prerequisites
 
 1. **Go 1.21+** — [golang.org/dl](https://golang.org/dl/)
@@ -40,6 +56,8 @@ Add your SSH hosts, tag and organize them, then connect with a single click — 
 ### Run in development
 
 ```bash
+git clone https://github.com/Genius740Code/FlashSSH.git
+cd FlashSSH
 wails dev
 ```
 
@@ -114,6 +132,30 @@ flashssh/
 
 ---
 
-## License
+## 🤝 Contributing
 
-MIT
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+### Development Setup
+
+1. Fork the repository
+2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/FlashSSH.git`
+3. Create a feature branch: `git checkout -b feature/amazing-feature`
+4. Make your changes
+5. Commit your changes: `git commit -m 'Add some amazing feature'`
+6. Push to the branch: `git push origin feature/amazing-feature`
+7. Open a Pull Request
+
+---
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/Genius740Code/FlashSSH/blob/main/LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- Built with [Wails v2](https://wails.io/) - Go + React desktop app framework
+- Terminal detection logic inspired by various open-source SSH tools
+- Thanks to all contributors who help make FlashSSH better!
