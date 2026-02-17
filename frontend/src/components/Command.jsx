@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import { EventsOn } from '../wailsjs/runtime/runtime.js'
 import { GetSettings } from '../wailsjs/go/main/App.js'
 
-export default function Terminal({ session, sessions, onDisconnect, onSendInput, onResize }) {
+export default function Command({ session, sessions, onDisconnect, onSendInput, onResize }) {
   const containerRef = useRef(null)
   const termRef = useRef(null)
   const fitRef = useRef(null)
@@ -68,7 +68,7 @@ export default function Terminal({ session, sessions, onDisconnect, onSendInput,
             copyToClipboard(fileContent)
             // Show brief notification
             if (termRef.current) {
-              termRef.current.write('\r\n\x1b[90m📋 Copied to clipboard\x1b[0m\r\n')
+              termRef.current.write('\r\n[Clipboard copied]\r\n')
             }
           }
         }
@@ -129,7 +129,7 @@ export default function Terminal({ session, sessions, onDisconnect, onSendInput,
             termRef.current.refresh(0, termRef.current.rows - 1)
           }
         } catch (error) {
-          console.warn('Terminal resize error:', error)
+          console.warn('Command resize error:', error)
           // Retry once after a short delay
           setTimeout(() => {
             if (fitRef.current && termRef.current) {
@@ -174,7 +174,7 @@ export default function Terminal({ session, sessions, onDisconnect, onSendInput,
       if (retryCount < 3) {
         setTimeout(() => fitTerminal(retryCount + 1), 100 * (retryCount + 1))
       } else {
-        console.warn('Terminal fit failed after retries:', error)
+        console.warn('Command fit failed after retries:', error)
       }
     }
   }, [session.hostId, onResize])
@@ -196,24 +196,24 @@ export default function Terminal({ session, sessions, onDisconnect, onSendInput,
 
       term = new XTerm({
         theme: {
-          background: '#0f0f11',
-          foreground: '#e8e8ea',
-          cursor: '#22c55e',
-          cursorAccent: '#0f0f11',
-          selectionBackground: 'rgba(255,255,255,0.12)',
-          black: '#1a1a1e',    red: '#f87171',    green: '#4ade80',   yellow: '#fbbf24',
-          blue: '#60a5fa',     magenta: '#c084fc', cyan: '#22d3ee',   white: '#e8e8ea',
-          brightBlack: '#444455', brightRed: '#ef4444', brightGreen: '#22c55e',
-          brightYellow: '#f59e0b', brightBlue: '#3b82f6', brightMagenta: '#a855f7',
-          brightCyan: '#06b6d4', brightWhite: '#ffffff',
+          background: '#000000',
+          foreground: '#ffffff',
+          cursor: '#ffffff',
+          cursorAccent: '#000000',
+          selectionBackground: 'rgba(255,255,255,0.3)',
+          black: '#000000',    red: '#ff0000',    green: '#00ff00',   yellow: '#ffff00',
+          blue: '#0000ff',     magenta: '#ff00ff', cyan: '#00ffff',   white: '#ffffff',
+          brightBlack: '#808080', brightRed: '#ff8080', brightGreen: '#80ff80',
+          brightYellow: '#ffff80', brightBlue: '#8080ff', brightMagenta: '#ff80ff',
+          brightCyan: '#80ffff', brightWhite: '#ffffff',
         },
-        fontFamily: "'Cascadia Code', 'JetBrains Mono', 'Fira Code', 'Consolas', 'Courier New', monospace",
+        fontFamily: "'Consolas', 'Courier New', monospace",
         fontSize: 14,
-        lineHeight: 1.45,
+        lineHeight: 1.2,
         cursorBlink: true,
-        cursorStyle: 'bar',
-        cursorWidth: 2,
-        scrollback: 10000,
+        cursorStyle: 'block',
+        cursorWidth: 1,
+        scrollback: 500,
         allowTransparency: false,
         convertEol: false,
         screenReaderMode: false,
@@ -260,8 +260,7 @@ export default function Terminal({ session, sessions, onDisconnect, onSendInput,
       })
       offClosed = EventsOn('terminal:closed', ({ id }) => {
         if (id === session.hostId && term) {
-          term.write('\r\n\x1b[90m─────────────────────────────\x1b[0m\r\n')
-          term.write('\x1b[90mSession ended. Close this panel or reconnect.\x1b[0m\r\n')
+          term.write('\r\nConnection closed. Press any key to exit.\r\n')
         }
       })
     }
@@ -298,27 +297,27 @@ export default function Terminal({ session, sessions, onDisconnect, onSendInput,
     : status === 'error' ? 'Error'
     : 'Closed'
 
-  const statusColor = status === 'connected' ? '#22c55e'
-    : status === 'connecting' ? '#f59e0b'
-    : status === 'error' ? '#ef4444'
-    : 'var(--muted)'
+  const statusColor = status === 'connected' ? '#00ff00'
+    : status === 'connecting' ? '#ffff00'
+    : status === 'error' ? '#ff0000'
+    : '#808080'
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#0f0f11' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#000000' }}>
       {/* Tab bar */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px',
-        borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0,
+        borderBottom: '1px solid #808080', background: '#1a1a1a', flexShrink: 0,
       }}>
-        <div style={{ width: 9, height: 9, borderRadius: 3, background: session.color || '#22c55e' }} />
-        <span style={{ fontSize: 14, fontWeight: 600 }}>{session.hostName}</span>
+        <div style={{ width: 9, height: 9, borderRadius: 3, background: session.color || '#00ff00' }} />
+        <span style={{ fontSize: 14, fontWeight: 600, color: '#ffffff' }}>{session.hostName}</span>
 
         {/* Status pill */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 5,
           padding: '3px 10px', borderRadius: 20,
-          background: `${statusColor}15`,
-          border: `1px solid ${statusColor}35`,
+          background: `${statusColor}20`,
+          border: `1px solid ${statusColor}80`,
         }}>
           <div style={{
             width: 6, height: 6, borderRadius: '50%', background: statusColor,
@@ -332,14 +331,14 @@ export default function Terminal({ session, sessions, onDisconnect, onSendInput,
           <div style={{
             display: 'flex', alignItems: 'center', gap: 4,
             padding: '2px 8px', borderRadius: 12,
-            background: 'rgba(34,197,94,0.1)',
-            border: '1px solid rgba(34,197,94,0.3)',
+            background: 'rgba(0,255,0,0.1)',
+            border: '1px solid rgba(0,255,0,0.3)',
           }}>
             <div style={{
-              width: 4, height: 4, borderRadius: '50%', background: '#22c55e',
+              width: 4, height: 4, borderRadius: '50%', background: '#00ff00',
               animation: 'pulse 1s ease infinite',
             }} />
-            <span style={{ fontSize: 10, fontWeight: 500, color: '#22c55e' }}>
+            <span style={{ fontSize: 10, fontWeight: 500, color: '#00ff00' }}>
               {lastResizeRef.current.cols}×{lastResizeRef.current.rows}
             </span>
           </div>
@@ -350,11 +349,12 @@ export default function Terminal({ session, sessions, onDisconnect, onSendInput,
           style={{
             marginLeft: 'auto', padding: '5px 14px', borderRadius: 6,
             fontSize: 12, fontWeight: 500,
-            border: '1px solid var(--border)', color: 'var(--muted)',
+            border: '1px solid #808080', color: '#ffffff',
+            background: 'transparent',
             transition: 'var(--t)',
           }}
-          onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = '#ef444455' }}
-          onMouseLeave={e => { e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.borderColor = 'var(--border)' }}>
+          onMouseEnter={e => { e.currentTarget.style.color = '#ff0000'; e.currentTarget.style.borderColor = '#ff0000' }}
+          onMouseLeave={e => { e.currentTarget.style.color = '#ffffff'; e.currentTarget.style.borderColor = '#808080' }}>
           Disconnect
         </button>
       </div>

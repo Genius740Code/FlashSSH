@@ -44,8 +44,19 @@ type SSHHost struct {
 	Description  string    `json:"description"`
 }
 
+type ServerSettings struct {
+	TerminalType string `json:"terminalType"` // "terminal" or "cmd"
+}
+
+type AppSettings struct {
+	DefaultTerminalType string                    `json:"defaultTerminalType"` // "terminal" or "cmd"
+	AutoCopyCatOutput bool                      `json:"autoCopyCatOutput"` // auto-copy cat command output to clipboard
+	ServerSettings    map[string]ServerSettings `json:"serverSettings"`    // hostID -> settings
+}
+
 type AppData struct {
-	Hosts []SSHHost `json:"hosts"`
+	Hosts    []SSHHost   `json:"hosts"`
+	Settings AppSettings `json:"settings"`
 }
 
 func NewApp() *App {
@@ -68,16 +79,40 @@ func (a *App) ensureDataDir() {
 }
 
 func (a *App) loadData() AppData {
-	data := AppData{Hosts: []SSHHost{}}
+	data := AppData{
+		Hosts: []SSHHost{},
+		Settings: AppSettings{
+			DefaultTerminalType: "terminal",
+			AutoCopyCatOutput: true,
+			ServerSettings:    make(map[string]ServerSettings),
+		},
+	}
 	b, err := os.ReadFile(a.dataPath())
 	if err != nil {
 		return data
 	}
 	if err := json.Unmarshal(b, &data); err != nil {
-		return AppData{Hosts: []SSHHost{}}
+		return AppData{
+			Hosts: []SSHHost{},
+			Settings: AppSettings{
+				DefaultTerminalType: "terminal",
+				AutoCopyCatOutput: true,
+				ServerSettings:    make(map[string]ServerSettings),
+			},
+		}
 	}
 	if data.Hosts == nil {
 		data.Hosts = []SSHHost{}
+	}
+	if data.Settings.ServerSettings == nil {
+		data.Settings.ServerSettings = make(map[string]ServerSettings)
+	}
+	if data.Settings.DefaultTerminalType == "" {
+		data.Settings.DefaultTerminalType = "terminal"
+	}
+	// AutoCopyCatOutput defaults to true if not set
+	if !data.Settings.AutoCopyCatOutput {
+		data.Settings.AutoCopyCatOutput = true
 	}
 	return data
 }
@@ -383,13 +418,26 @@ func (a *App) SendInput(id string, input string) error {
 }
 
 func (a *App) ResizeTerminal(id string, cols int, rows int) error {
+	// Validate dimensions
+	if cols <= 0 || rows <= 0 || cols > 1000 || rows > 1000 {
+		return fmt.Errorf("invalid terminal dimensions: %dx%d", cols, rows)
+	}
+
 	a.sessionsMu.Lock()
 	sess, ok := a.sessions[id]
 	a.sessionsMu.Unlock()
 	if !ok {
+		return nil // Session may have been closed, that's ok
+	}
+
+	if err := sess.session.WindowChange(rows, cols); err != nil {
+		// Log the error but don't fail the operation
+		// Some SSH servers may not support window changes
+		fmt.Printf("Warning: terminal resize failed for session %s: %v\n", id, err)
 		return nil
 	}
-	return sess.session.WindowChange(rows, cols)
+	
+	return nil
 }
 
 func (a *App) DisconnectSSH(id string) error {
@@ -499,4 +547,32 @@ func (a *App) ImportFromSSHConfig() (int, error) {
 		imported++
 	}
 	return imported, a.saveData(data)
+}
+
+func (a *App) GetSettings() AppSettings {
+	data := a.loadData()
+	return data.Settings
+}
+
+func (a *App) SaveSettings(settings AppSettings) error {
+	data := a.loadData()
+	data.Settings = settings
+	return a.saveData(data)
+}
+
+func (a *App) GetServerSettings(hostId string) ServerSettings {
+	data := a.loadData()
+	if serverSettings, exists := data.Settings.ServerSettings[hostId]; exists {
+		return serverSettings
+	}
+	return ServerSettings{TerminalType: data.Settings.DefaultTerminalType}
+}
+
+func (a *App) SaveServerSettings(hostId string, serverSettings ServerSettings) error {
+	data := a.loadData()
+	if data.Settings.ServerSettings == nil {
+		data.Settings.ServerSettings = make(map[string]ServerSettings)
+	}
+	data.Settings.ServerSettings[hostId] = serverSettings
+	return a.saveData(data)
 }

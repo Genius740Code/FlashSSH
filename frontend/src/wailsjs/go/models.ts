@@ -14,7 +14,6 @@ export namespace main {
 	}
 	export class AppSettings {
 	    defaultTerminalType: string;
-	    autoCopyCatOutput: boolean;
 	    serverSettings: Record<string, ServerSettings>;
 	
 	    static createFrom(source: any = {}) {
@@ -24,7 +23,6 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.defaultTerminalType = source["defaultTerminalType"];
-	        this.autoCopyCatOutput = source["autoCopyCatOutput"];
 	        this.serverSettings = this.convertValues(source["serverSettings"], ServerSettings, true);
 	    }
 	

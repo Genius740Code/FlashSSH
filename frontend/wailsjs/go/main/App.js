@@ -26,6 +26,14 @@ export function GetHosts() {
   return window['go']['main']['App']['GetHosts']();
 }
 
+export function GetServerSettings(arg1) {
+  return window['go']['main']['App']['GetServerSettings'](arg1);
+}
+
+export function GetSettings() {
+  return window['go']['main']['App']['GetSettings']();
+}
+
 export function ImportFromSSHConfig() {
   return window['go']['main']['App']['ImportFromSSHConfig']();
 }
@@ -36,6 +44,14 @@ export function IsConnected(arg1) {
 
 export function ResizeTerminal(arg1, arg2, arg3) {
   return window['go']['main']['App']['ResizeTerminal'](arg1, arg2, arg3);
+}
+
+export function SaveServerSettings(arg1, arg2) {
+  return window['go']['main']['App']['SaveServerSettings'](arg1, arg2);
+}
+
+export function SaveSettings(arg1) {
+  return window['go']['main']['App']['SaveSettings'](arg1);
 }
 
 export function SendInput(arg1, arg2) {

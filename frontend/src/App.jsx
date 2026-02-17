@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { GetHosts, AddHost, UpdateHost, DeleteHost, ConnectSSH, DisconnectSSH, SendInput, ResizeTerminal, GetAllTags, ImportFromSSHConfig } from './wailsjs/go/main/App.js'
+import { GetHosts, AddHost, UpdateHost, DeleteHost, ConnectSSH, DisconnectSSH, SendInput, ResizeTerminal, GetAllTags, ImportFromSSHConfig, GetSettings } from './wailsjs/go/main/App.js'
 import { EventsOn } from './wailsjs/runtime/runtime.js'
 import HostGrid from './components/HostGrid.jsx'
 import Terminal from './components/Terminal.jsx'
+import Command from './components/Command.jsx'
 import HostModal from './components/HostModal.jsx'
 import Toast from './components/Toast.jsx'
+import Settings from './components/Settings.jsx'
 
 export default function App() {
   const [hosts, setHosts] = useState([])
@@ -15,15 +17,66 @@ export default function App() {
   const [modal, setModal] = useState(null)
   const [toast, setToast] = useState(null)
   const [activeSession, setActiveSession] = useState(null)
+  const [showSettings, setShowSettings] = useState(false)
+  const [serverTerminalTypes, setServerTerminalTypes] = useState({})
   // status: 'connecting' | 'connected' | 'error'
   const [sessions, setSessions] = useState({})
   const searchRef = useRef(null)
+
+  const getTerminalType = useCallback((hostId) => {
+    // First check if we have server-specific setting
+    if (serverTerminalTypes[hostId]) {
+      return serverTerminalTypes[hostId]
+    }
+    
+    // Fallback to default - this shouldn't happen but ensures we always return something
+    return 'terminal'
+  }, [serverTerminalTypes])
+
+  const refreshTerminalTypes = useCallback(async () => {
+    const settings = await GetSettings()
+    const types = {}
+    hosts.forEach(host => {
+      if (settings.serverSettings && settings.serverSettings[host.id]) {
+        types[host.id] = settings.serverSettings[host.id].terminalType || settings.defaultTerminalType || 'terminal'
+      } else {
+        types[host.id] = settings.defaultTerminalType || 'terminal'
+      }
+    })
+    
+    console.log('Refreshing terminal types:', { settings, types })
+    setServerTerminalTypes(types)
+    
+    // Force re-render of active session if terminal type changed
+    if (activeSession) {
+      const newType = types[activeSession.hostId]
+      const currentType = serverTerminalTypes[activeSession.hostId]
+      console.log('Active session terminal type change:', { hostId: activeSession.hostId, newType, currentType })
+      if (newType !== currentType) {
+        // Force a re-render by updating the session
+        setActiveSession(prev => ({ ...prev }))
+        console.log('Forced re-render for terminal type change')
+      }
+    }
+  }, [hosts, activeSession, serverTerminalTypes])
 
   const refresh = useCallback(async () => {
     try {
       const [h, t] = await Promise.all([GetHosts(), GetAllTags()])
       setHosts(h ?? [])
       setTags(t ?? [])
+      
+      // Load terminal types for all hosts
+      const settings = await GetSettings()
+      const types = {}
+      h.forEach(host => {
+        if (settings.serverSettings && settings.serverSettings[host.id]) {
+          types[host.id] = settings.serverSettings[host.id].terminalType || settings.defaultTerminalType || 'terminal'
+        } else {
+          types[host.id] = settings.defaultTerminalType || 'terminal'
+        }
+      })
+      setServerTerminalTypes(types)
     } finally {
       setLoading(false)
     }
@@ -174,11 +227,21 @@ export default function App() {
                 style={{ padding: '7px 12px', borderRadius: 6, fontSize: 13, border: '1px solid var(--border)', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
                 Import
               </button>
+              <button onClick={() => setShowSettings(true)}
+                style={{ padding: '7px 12px', borderRadius: 6, fontSize: 13, border: '1px solid var(--border)', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+                Settings
+              </button>
               <button onClick={() => setModal({ mode: 'add' })}
                 style={{ padding: '7px 14px', borderRadius: 6, fontSize: 13, fontWeight: 600, background: '#22c55e', color: '#000', whiteSpace: 'nowrap' }}>
                 + New
               </button>
             </>
+          )}
+          {activeSession && (
+            <button onClick={() => setShowSettings(true)}
+              style={{ padding: '7px 12px', borderRadius: 6, fontSize: 13, border: '1px solid var(--border)', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+              Settings
+            </button>
           )}
         </div>
 
@@ -215,21 +278,46 @@ export default function App() {
       </div>
 
       {/* Right: terminal */}
-      {activeSession && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          <Terminal
-            session={activeSession}
-            sessions={sessions}
-            onDisconnect={handleDisconnect}
-            onSendInput={SendInput}
-            onResize={ResizeTerminal}
-          />
-        </div>
-      )}
+      {activeSession && (() => {
+        const terminalType = getTerminalType(activeSession.hostId)
+        console.log('Rendering terminal for host:', activeSession.hostId, 'type:', terminalType)
+        
+        return (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            {terminalType === 'cmd' ? (
+              <Command
+                key={`cmd-${activeSession.hostId}`}
+                session={activeSession}
+                sessions={sessions}
+                onDisconnect={handleDisconnect}
+                onSendInput={SendInput}
+                onResize={ResizeTerminal}
+              />
+            ) : (
+              <Terminal
+                key={`term-${activeSession.hostId}`}
+                session={activeSession}
+                sessions={sessions}
+                onDisconnect={handleDisconnect}
+                onSendInput={SendInput}
+                onResize={ResizeTerminal}
+              />
+            )}
+          </div>
+        )
+      })()}
 
       {modal && (
         <HostModal mode={modal.mode} host={modal.host}
           onSave={handleSave} onClose={() => setModal(null)} existingTags={tags} />
+      )}
+
+      {showSettings && (
+        <Settings 
+          hosts={hosts} 
+          onClose={() => setShowSettings(false)} 
+          onSettingsChange={refreshTerminalTypes}
+        />
       )}
 
       {toast && <Toast key={toast.id} msg={toast.msg} type={toast.type} />}
