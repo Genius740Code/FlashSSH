@@ -1,0 +1,5 @@
+build/
+frontend/node_modules/
+frontend/dist/
+# Keep the placeholder dist so `go embed` works before first npm build
+!frontend/dist/index.html
